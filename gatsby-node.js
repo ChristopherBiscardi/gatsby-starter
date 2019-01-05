@@ -15,6 +15,7 @@ exports.onCreateNode = ({node, actions, getNode}) => {
   const {createNodeField} = actions;
   let slug;
   switch (node.internal.type) {
+    case `Mdx`:
     case `MarkdownRemark`:
       const fileNode = getNode(node.parent);
       const [basePath, name] = fileNode.relativePath.split('/');
@@ -34,34 +35,54 @@ exports.createPages = ({graphql, actions}) => {
   const {createPage} = actions;
 
   return new Promise((resolve, reject) => {
-    const templates = ['blogPost', 'tagsPage', 'blogPage']
-      .reduce((mem, templateName) => {
-        return Object.assign({}, mem,
-        {[templateName]: path.resolve(`src/templates/${kebabCase(templateName)}.tsx`)});
-      }, {});
+    const templates = ['blogPost', 'tagsPage', 'blogPage'].reduce(
+      (mem, templateName) => {
+        return Object.assign({}, mem, {
+          [templateName]: path.resolve(
+            `src/templates/${kebabCase(templateName)}.tsx`
+          )
+        });
+      },
+      {}
+    );
 
     graphql(
       `
-      {
-        posts: allMarkdownRemark {
-          edges {
-            node {
-              fields {
-                slug
+        {
+          posts: allMarkdownRemark {
+            edges {
+              node {
+                fields {
+                  slug
+                }
+                frontmatter {
+                  tags
+                }
               }
-              frontmatter {
-                tags
+            }
+          }
+          otherPosts: allMdx {
+            edges {
+              node {
+                fields {
+                  slug
+                }
+                frontmatter {
+                  tags
+                }
               }
             }
           }
         }
-      }
-    `
+      `
     ).then(result => {
       if (result.errors) {
         return reject(result.errors);
       }
-      const posts = result.data.posts.edges.map(p => p.node);
+      console.log(result.data.otherPosts);
+      const posts = result.data.posts.edges
+        .concat(result.data.otherPosts.edges)
+        .map(p => p.node);
 
       // Create blog pages
       posts
@@ -78,9 +99,10 @@ exports.createPages = ({graphql, actions}) => {
 
       // Create tags pages
       posts
-        .reduce((mem, post) =>
-          cleanArray(mem.concat(get(post, 'frontmatter.tags')))
-        , [])
+        .reduce(
+          (mem, post) => cleanArray(mem.concat(get(post, 'frontmatter.tags'))),
+          []
+        )
         .forEach(tag => {
           createPage({
             path: `/blog/tags/${kebabCase(tag)}/`,

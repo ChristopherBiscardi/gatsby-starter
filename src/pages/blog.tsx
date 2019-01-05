@@ -21,8 +21,8 @@ interface BlogProps extends LayoutProps {
 }
 
 const BlogPage = (props: BlogProps) => {
-  const tags = props.data.tags.group;
-  const posts = props.data.posts.edges;
+  const tags = props.data.tags.group.concat(props.data.otherTags.group);
+  const posts = props.data.posts.edges.concat(props.data.otherPosts.edges);
   const { pathname } = props.location;
   const pageCount = Math.ceil(props.data.posts.totalCount / 10);
 
@@ -31,16 +31,11 @@ const BlogPage = (props: BlogProps) => {
     <Container>
       {posts.map(({ node }: {node: MarkdownRemark}) => {
         const { frontmatter, timeToRead, fields: { slug }, excerpt } = node;
-        const avatar = frontmatter.author.avatar.children[0] as ImageSharp;
         const cover = get(frontmatter, "image.children.0.fixed", {});
 
         const extra = (
           <Comment.Group>
             <Comment>
-              <Comment.Avatar
-                src={avatar.fixed.src}
-                srcSet={avatar.fixed.srcSet}
-              />
               <Comment.Content>
                 <Comment.Author style={{ fontWeight: 400 }}>
                   {frontmatter.author.id}
@@ -108,6 +103,12 @@ query PageBlog {
       totalCount
     }
   }
+  otherTags: allMdx(filter: {frontmatter: {draft: {ne: true}}}) {
+    group(field: frontmatter___tags) {
+      fieldValue
+      totalCount
+    }
+  }
 
   # Get posts
   posts: allMarkdownRemark(
@@ -152,6 +153,40 @@ query PageBlog {
               }
             }
           }
+        }
+      }
+    }
+  }
+  otherPosts: allMdx(
+    sort: { order: DESC, fields: [frontmatter___updatedDate] },
+    filter: {
+      frontmatter: { draft: { ne: true } },
+      fileAbsolutePath: { regex: "/blog/" }
+    },
+    limit: 10
+  ) {
+    totalCount
+    edges {
+      node {
+        excerpt
+        timeToRead
+        fields {
+          slug
+        }
+        frontmatter {
+          title
+          updatedDate(formatString: "DD MMMM, YYYY")
+          image {
+          	children {
+              ... on ImageSharp {
+                fixed(width: 700, height: 100) {
+                  src
+                  srcSet
+                }
+              }
+            }
+          }
+          author
         }
       }
     }

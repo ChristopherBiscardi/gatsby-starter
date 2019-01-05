@@ -17,23 +17,19 @@ interface BlogPostProps extends LayoutProps {
 }
 
 const BlogPostPage = (props: BlogPostProps) => {
-  const { frontmatter, html, timeToRead } = props.data.post;
-  const avatar = frontmatter.author.avatar.children[0] as ImageSharp;
+console.log(props);
+let post = props.data.post || props.data.otherPost;
+const { frontmatter, html, code, timeToRead } = post;
 
-  const tags = props.data.post.frontmatter.tags
+const tags = post.frontmatter.tags
     .map((tag) => <Label key={tag}><Link to={`/blog/tags/${tag}/`}>{tag}</Link></Label>);
 
-  const recents = props.data.recents.edges
+const recents = props.data.recents.edges
     .map(({ node }) => {
-      const recentAvatar = node.frontmatter.author.avatar.children[0] as ImageSharp;
       const recentCover = get(node, "frontmatter.image.children.0.fixed", {});
       const extra = (
         <Comment.Group>
           <Comment>
-            <Comment.Avatar
-              src={recentAvatar.fixed.src}
-              srcSet={recentAvatar.fixed.srcSet}
-            />
             <Comment.Content>
               <Comment.Author style={{ fontWeight: 400 }}>
                 {node.frontmatter.author.id}
@@ -58,18 +54,13 @@ const BlogPostPage = (props: BlogPostProps) => {
       );
     });
 
-  const cover = get(frontmatter, "image.children.0.fixed", {} );
-  return (
+const cover = get(frontmatter, "image.children.0.fixed", {} );
+return (
     <Container>
       <BlogTitle />
       <Segment vertical style={{ border: "none" }}>
         <Item.Group>
           <Item>
-            <Item.Image size="tiny"
-              src={avatar.fixed.src}
-              srcSet={avatar.fixed.srcSet}
-              circular
-            />
             <Item.Content>
               <Item.Description>{frontmatter.author.id}</Item.Description>
               <Item.Meta>{frontmatter.author.bio}</Item.Meta>
@@ -82,13 +73,14 @@ const BlogPostPage = (props: BlogPostProps) => {
       <Image
         {...cover}
         fluid
-      /> 
-      <Segment vertical
+      />
+      {code && <MDXRenderer>{code.body}</MDXRenderer>}
+      { !code && <Segment vertical
         style={{ border: "none" }}
         dangerouslySetInnerHTML={{
           __html: html,
         }}
-      />
+      />}
       <Segment vertical>
         {tags}
       </Segment>
@@ -141,6 +133,30 @@ export const pageQuery = graphql`
           }
         }
       }
+      title
+      updatedDate(formatString: "MMM D, YYYY")
+      image {
+        children {
+          ... on ImageSharp {
+            fixed(width: 900, height: 300, quality: 100) {
+              src
+              srcSet
+            }
+          }
+        }
+      }
+    }
+  }
+  otherPost: mdx(fields: {slug: {eq: $slug}}) {
+    html
+    excerpt
+    timeToRead
+    fields {
+      slug
+    }
+    frontmatter {
+      tags
+      author
       title
       updatedDate(formatString: "MMM D, YYYY")
       image {

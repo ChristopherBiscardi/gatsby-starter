@@ -1,3 +1,5 @@
+const path = require('path');
+
 module.exports = {
   siteMetadata: {
     title: `My website`,
@@ -8,6 +10,12 @@ module.exports = {
     'MarkdownRemark.frontmatter.author': `AuthorJson`
   },
   plugins: [
+    {
+      resolve: `gatsby-mdx`,
+      options: {
+        defaultLayouts: {default: path.resolve('./src/components/layout.tsx')}
+      }
+    },
     // Expose `/data` to graphQL layer
     {
       resolve: `gatsby-source-filesystem`,
